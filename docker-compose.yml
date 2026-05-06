@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: 123
       POSTGRES_DB: parking
     ports:
-      - "5432:5432"
+      - "55434:5432"
     volumes:
       - ./services/parking/db/migrations.sql:/docker-entrypoint-initdb.d/init.sql
 
