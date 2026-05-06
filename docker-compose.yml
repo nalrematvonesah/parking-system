@@ -9,7 +9,8 @@ services:
     ports:
       - "55434:5432"
     volumes:
-      - ./services/parking/db/migrations.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./services/parking/db/migrations.sql:/docker-entrypoint-initdb.d/01_parking.sql
+      - ./services/user/db/migrations.sql:/docker-entrypoint-initdb.d/02_user.sql
 
   redis:
     image: redis:7
@@ -20,6 +21,22 @@ services:
     build: ./services/parking
     ports:
       - "50051:50051"
+    environment:
+      GRPC_PORT: "50051"
+      DATABASE_URL: postgres://postgres:123@postgres:5432/parking?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - postgres
+      - redis
+
+  user:
+    build: ./services/user
+    ports:
+      - "50052:50052"
+    environment:
+      GRPC_PORT: "50052"
+      DATABASE_URL: postgres://postgres:123@postgres:5432/parking?sslmode=disable
+      REDIS_ADDR: redis:6379
     depends_on:
       - postgres
       - redis
