@@ -11,7 +11,7 @@ func Recovery(log *zap.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Error("panic recovered", zap.Any("panic", r))
+				log.Error("panic recovered", zap.Any("panic", r), zap.String("method", info.FullMethod))
 			}
 		}()
 		return handler(ctx, req)

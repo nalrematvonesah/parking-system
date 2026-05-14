@@ -4,14 +4,14 @@ import (
 	"context"
 	"net"
 
-	"user-service/internal/cache"
 	"user-service/internal/config"
+	"user-service/internal/email"
 	"user-service/internal/handler"
 	"user-service/internal/middleware"
+	natspub "user-service/internal/nats"
+	"user-service/internal/pb"
 	"user-service/internal/repository"
 	"user-service/internal/service"
-
-	parkingv1 "github.com/nalrematvonesah/parking-proto/gen/user/v1"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -22,6 +22,7 @@ import (
 type App struct {
 	grpcServer *grpc.Server
 	lis        net.Listener
+	publisher  *natspub.Publisher
 }
 
 func New(ctx context.Context, cfg config.Config, log *zap.Logger) (*App, error) {
@@ -29,10 +30,19 @@ func New(ctx context.Context, cfg config.Config, log *zap.Logger) (*App, error) 
 	if err != nil {
 		return nil, err
 	}
+	if err := db.Ping(ctx); err != nil {
+		return nil, err
+	}
+
+	publisher, err := natspub.New(cfg.NatsURL)
+	if err != nil {
+		return nil, err
+	}
+
+	mailer := email.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.User, cfg.SMTP.Pass, cfg.SMTP.From)
 
 	repo := repository.NewPostgres(db)
-	c := cache.New(cfg.RedisAddr, cfg.RedisDB)
-	svc := service.New(repo, c)
+	svc := service.New(repo, publisher, mailer)
 	h := handler.NewGRPC(svc)
 
 	server := grpc.NewServer(
@@ -42,7 +52,7 @@ func New(ctx context.Context, cfg config.Config, log *zap.Logger) (*App, error) 
 		),
 	)
 
-	parkingv1.RegisterUserServiceServer(server, h)
+	pb.RegisterExtendedUserServiceServer(server, h)
 	reflection.Register(server)
 
 	lis, err := net.Listen("tcp", ":"+cfg.GRPCPort)
@@ -50,9 +60,14 @@ func New(ctx context.Context, cfg config.Config, log *zap.Logger) (*App, error) 
 		return nil, err
 	}
 
-	return &App{grpcServer: server, lis: lis}, nil
+	return &App{grpcServer: server, lis: lis, publisher: publisher}, nil
 }
 
 func (a *App) Run() error {
 	return a.grpcServer.Serve(a.lis)
+}
+
+func (a *App) Stop() {
+	a.grpcServer.GracefulStop()
+	a.publisher.Close()
 }

@@ -1,9 +1,14 @@
-FROM golang:1.25
+FROM golang:1.25 AS builder
 
 WORKDIR /app
-COPY . .
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN go mod tidy
-RUN go build -o app ./cmd
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o app ./cmd
+
+FROM alpine:3.19
+WORKDIR /app
+COPY --from=builder /app/app .
 
 CMD ["./app"]
