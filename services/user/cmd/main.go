@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"user-service/internal/app"
 	"user-service/internal/config"
@@ -14,16 +17,30 @@ func main() {
 	ctx := context.Background()
 
 	cfg := config.Load()
-	logger, _ := zap.NewProduction()
+
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("failed to init logger: %v", err)
+	}
+	defer logger.Sync()
 
 	a, err := app.New(ctx, cfg, logger)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("failed to init app", zap.Error(err))
 	}
 
 	logger.Info("user-service started", zap.String("port", cfg.GRPCPort))
 
-	if err := a.Run(); err != nil {
-		log.Fatal(err)
-	}
+	go func() {
+		if err := a.Run(); err != nil {
+			logger.Error("grpc server error", zap.Error(err))
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("shutting down gracefully...")
+	a.Stop()
 }

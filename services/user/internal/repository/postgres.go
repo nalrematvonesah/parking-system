@@ -23,12 +23,22 @@ func NewPostgres(db *pgxpool.Pool) *PostgresRepo {
 }
 
 func (r *PostgresRepo) CreateUser(ctx context.Context, email, hashedPassword string) (int64, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
 	var id int64
-	err := r.db.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id`,
 		email, hashedPassword,
 	).Scan(&id)
-	return id, err
+	if err != nil {
+		return 0, err
+	}
+
+	return id, tx.Commit(ctx)
 }
 
 func (r *PostgresRepo) GetUserByEmail(ctx context.Context, email string) (*User, error) {
@@ -42,17 +52,59 @@ func (r *PostgresRepo) GetUserByEmail(ctx context.Context, email string) (*User,
 	return u, err
 }
 
+func (r *PostgresRepo) GetUserByID(ctx context.Context, id int64) (*User, error) {
+	u := &User{}
+	err := r.db.QueryRow(ctx,
+		`SELECT id, email, password FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Email, &u.Password)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return u, err
+}
+
 func (r *PostgresRepo) AddVehicle(ctx context.Context, userID int64, plate string) error {
-	_, err := r.db.Exec(ctx,
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx,
 		`INSERT INTO vehicles (user_id, plate_number) VALUES ($1, $2)`,
 		userID, plate,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *PostgresRepo) DeleteVehicle(ctx context.Context, userID int64, plate string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx,
+		`DELETE FROM vehicles WHERE user_id = $1 AND plate_number = $2`,
+		userID, plate,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.New("vehicle not found")
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *PostgresRepo) GetVehiclesByUser(ctx context.Context, userID int64) ([]string, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT plate_number FROM vehicles WHERE user_id = $1 ORDER BY id`, userID,
+		`SELECT plate_number FROM vehicles WHERE user_id = $1 ORDER BY created_at`, userID,
 	)
 	if err != nil {
 		return nil, err
