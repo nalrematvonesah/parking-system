@@ -3,63 +3,44 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"session-service/internal/app"
-	"session-service/internal/cache"
 	"session-service/internal/config"
-	"session-service/internal/handler"
-	"session-service/internal/nats"
-	"session-service/internal/repository"
-	"session-service/internal/service"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
 func main() {
+	ctx := context.Background()
+
 	cfg := config.Load()
 
-	db, err := pgxpool.New(
-		context.Background(),
-		cfg.DBUrl,
-	)
-
+	logger, err := zap.NewProduction()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to init logger: %v", err)
+	}
+	defer logger.Sync()
+
+	a, err := app.New(ctx, cfg, logger)
+	if err != nil {
+		logger.Fatal("failed to init app", zap.Error(err))
 	}
 
-	repo := repository.New(db)
+	logger.Info("session-service started", zap.String("port", cfg.GRPCPort))
 
-	parkingClient, err := service.NewParkingClient(
-		"localhost:50051",
-	)
+	go func() {
+		if err := a.Run(); err != nil {
+			logger.Error("grpc server error", zap.Error(err))
+		}
+	}()
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
 
-	redisCache := cache.New("localhost:6379")
-
-	natsClient, err := nats.New(
-		"nats://localhost:4222",
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	svc := service.New(
-		repo,
-		parkingClient,
-		redisCache,
-		natsClient,
-	)
-
-	h := handler.New(svc)
-
-	application := app.New(
-		cfg,
-		h,
-	)
-
-	log.Fatal(application.Run())
+	logger.Info("shutting down gracefully...")
+	a.Stop()
 }

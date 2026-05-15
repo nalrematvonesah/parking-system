@@ -3,4 +3,7 @@ go 1.25.4
 use (
 	./services/parking
 	./services/user
+	./services/session
+	./services/gateway
+	./services/notification
 )

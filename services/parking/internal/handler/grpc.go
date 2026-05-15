@@ -5,7 +5,7 @@ import (
 
 	"parking-service/internal/service"
 
-	parkingpb "github.com/nalrematvonesah/parking-proto/gen/parking/v1"
+	parkingpb "github.com/nalrematvonesah/parking.proto/gen/parking/v1"
 )
 
 type GRPC struct {

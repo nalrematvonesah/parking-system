@@ -11,7 +11,7 @@ import (
 	"parking-service/internal/repository"
 	"parking-service/internal/service"
 
-	parkingpb "github.com/nalrematvonesah/parking-proto/gen/parking/v1"
+	parkingpb "github.com/nalrematvonesah/parking.proto/gen/parking/v1"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"

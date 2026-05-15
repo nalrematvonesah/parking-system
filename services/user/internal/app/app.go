@@ -9,9 +9,10 @@ import (
 	"user-service/internal/handler"
 	"user-service/internal/middleware"
 	natspub "user-service/internal/nats"
-	"user-service/internal/pb"
 	"user-service/internal/repository"
 	"user-service/internal/service"
+
+	userv1 "github.com/nalrematvonesah/user.proto/gen/user/v1"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -42,7 +43,7 @@ func New(ctx context.Context, cfg config.Config, log *zap.Logger) (*App, error) 
 	mailer := email.New(cfg.SMTP.Host, cfg.SMTP.Port, cfg.SMTP.User, cfg.SMTP.Pass, cfg.SMTP.From)
 
 	repo := repository.NewPostgres(db)
-	svc := service.New(repo, publisher, mailer)
+	svc := service.New(repo, publisher, mailer, log)
 	h := handler.NewGRPC(svc)
 
 	server := grpc.NewServer(
@@ -52,7 +53,7 @@ func New(ctx context.Context, cfg config.Config, log *zap.Logger) (*App, error) 
 		),
 	)
 
-	pb.RegisterExtendedUserServiceServer(server, h)
+	userv1.RegisterUserServiceServer(server, h)
 	reflection.Register(server)
 
 	lis, err := net.Listen("tcp", ":"+cfg.GRPCPort)

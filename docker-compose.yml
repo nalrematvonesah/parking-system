@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:15
@@ -11,11 +9,23 @@ services:
     volumes:
       - ./services/parking/db/migrations.sql:/docker-entrypoint-initdb.d/01_parking.sql
       - ./services/user/db/migrations.sql:/docker-entrypoint-initdb.d/02_user.sql
+      - ./services/session/db/migrations.sql:/docker-entrypoint-initdb.d/03_session.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"
+      - "8222:8222"
 
   parking:
     build: ./services/parking
@@ -26,8 +36,10 @@ services:
       DATABASE_URL: postgres://postgres:123@postgres:5432/parking?sslmode=disable
       REDIS_ADDR: redis:6379
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   user:
     build: ./services/user
@@ -36,7 +48,64 @@ services:
     environment:
       GRPC_PORT: "50052"
       DATABASE_URL: postgres://postgres:123@postgres:5432/parking?sslmode=disable
-      REDIS_ADDR: redis:6379
+      NATS_URL: nats://nats:4222
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+
+  session:
+    build: ./services/session
+    ports:
+      - "50053:50053"
+    environment:
+      GRPC_PORT: "50053"
+      DATABASE_URL: postgres://postgres:123@postgres:5432/parking?sslmode=disable
+      REDIS_ADDR: redis:6379
+      NATS_URL: nats://nats:4222
+      PARKING_ADDR: parking:50051
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+      parking:
+        condition: service_started
+
+  notification:
+    build: ./services/notification
+    environment:
+      NATS_URL: nats://nats:4222
+      # SMTP_USER, SMTP_PASS, SMTP_FROM intentionally empty → dev mode (logs emails)
+    depends_on:
+      nats:
+        condition: service_started
+
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "8080:8080"
+    environment:
+      HTTP_PORT: "8080"
+      USER_ADDR: user:50052
+      PARKING_ADDR: parking:50051
+      SESSION_ADDR: session:50053
+      JWT_SECRET: change-me-in-production
+      ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+    depends_on:
+      user:
+        condition: service_started
+      parking:
+        condition: service_started
+      session:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
