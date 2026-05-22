@@ -116,3 +116,30 @@ func (h *GRPC) GetActiveSessions(ctx context.Context, req *sessionv1.UserRequest
 	}
 	return &sessionv1.SessionList{Sessions: out}, nil
 }
+
+func (h *GRPC) GetUserSessions(ctx context.Context, req *sessionv1.UserRequest) (*sessionv1.SessionList, error) {
+	if req.GetUserId() == 0 {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	sessions, err := h.svc.ListByUser(ctx, req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	out := make([]*sessionv1.SessionResponse, 0, len(sessions))
+	for _, s := range sessions {
+		item := &sessionv1.SessionResponse{
+			SessionId:     s.ID,
+			SlotId:        s.SlotID,
+			VehicleId:     s.VehicleID,
+			StartTimeUnix: s.StartTime.Unix(),
+		}
+		if s.EndTime != nil {
+			item.EndTimeUnix = s.EndTime.Unix()
+		}
+		out = append(out, item)
+	}
+
+	return &sessionv1.SessionList{Sessions: out}, nil
+}

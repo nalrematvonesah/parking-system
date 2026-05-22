@@ -73,6 +73,15 @@ const api = {
   getPrice: (id) => apiFetch(`/sessions/${id}/price`),
   activeSessions: () =>
     apiFetch("/sessions/active"),
+  // historySessions: () => apiFetch("/sessions/history"),
+
+  adminSlots: () => apiFetch("/admin/slots"),
+
+  addSlots: (count) =>
+    apiFetch("/admin/slots", {
+      method: "POST",
+      body: JSON.stringify({ count }),
+    }),
 };
 
 // ─── AUTH CONTEXT ─────────────────────────────────────────────────────────
@@ -126,6 +135,7 @@ function Spinner() {
   );
 }
 
+
 function Toast({ msg, type, onClose }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3500);
@@ -153,6 +163,7 @@ function AuthPage({ onAuth }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+
   async function submit(e) {
     e.preventDefault();
     setError("");
@@ -166,7 +177,8 @@ function AuthPage({ onAuth }) {
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("userId", data.user_id);
-      onAuth(data);
+      localStorage.setItem("userEmail", email);
+      onAuth(data, email);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -680,21 +692,124 @@ function HistoryPage({ history }) {
   );
 }
 
+function ProfilePage({ auth, vehicles, activeSessions, history }) {
+  return (
+    <div className="page">
+      <h2 className="page-title">Личный кабинет</h2>
+
+      <div className="session-card">
+        <div className="session-id">Профиль</div>
+        <div className="session-meta">Email: {auth.email || "—"}</div>
+        <div className="session-meta">User ID: {auth.user_id}</div>
+      </div>
+
+      <div className="session-card">
+        <div className="session-id">Статистика</div>
+        <div className="session-meta">Автомобилей: {vehicles.length}</div>
+        <div className="session-meta">Активных парковок: {activeSessions.length}</div>
+        <div className="session-meta">Завершённых парковок: {history.length}</div>
+      </div>
+    </div>
+  );
+}
+
+function AdminSlotsPage({ toast }) {
+  const [slots, setSlots] = useState([]);
+  const [count, setCount] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    try {
+      const d = await api.adminSlots();
+      setSlots(d.slots || []);
+    } catch (e) {
+      toast(e.message, "err");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function add(e) {
+    e.preventDefault();
+
+    try {
+      await api.addSlots(Number(count));
+      toast("Места добавлены", "ok");
+      setCount(1);
+      load();
+    } catch (e) {
+      toast(e.message, "err");
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  return (
+    <div className="page">
+      <h2 className="page-title">Админ: парковочные места</h2>
+
+      <form onSubmit={add} className="add-form">
+        <input
+          className="field-input"
+          type="number"
+          min="1"
+          value={count}
+          onChange={(e) => setCount(e.target.value)}
+          style={{ flex: 1 }}
+        />
+
+        <button className="btn-primary" type="submit">
+          Добавить места
+        </button>
+      </form>
+
+      {loading ? (
+        <Spinner />
+      ) : (
+        <div className="card-grid">
+          {slots.map((s) => (
+            <div className="vehicle-card" key={s.slot_id}>
+              <div className="vehicle-plate">
+                Место #{s.slot_id}
+              </div>
+
+              <Badge color={s.is_occupied ? "gray" : "green"}>
+                {s.is_occupied ? "Занято" : "Свободно"}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 // ─── MAIN APP ──────────────────────────────────────────────────────────────
 
 export default function App() {
   const [auth, setAuth] = useState(() => {
     const token = localStorage.getItem("token");
     const userId = localStorage.getItem("userId");
-    return token ? { token, user_id: userId } : null;
+    const email = localStorage.getItem("userEmail");
+
+    return token
+      ? { token, user_id: userId, email }
+      : null;
   });
   const [page, setPage] = useState("vehicles");
   const [toast, setToast] = useState({ msg: "", type: "ok" });
   const [vehicles, setVehicles] = useState([]);
   const [activeSessions, setActiveSessions] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem("parking_history");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [showModal, setShowModal] = useState(false);
   const [modalVehicle, setModalVehicle] = useState(null);
+  useEffect(() => {
+    localStorage.setItem("parking_history", JSON.stringify(history));
+  }, [history]);
 
   useEffect(() => {
     function handleUnauthorized() {
@@ -711,6 +826,8 @@ export default function App() {
     };
   }, []);
 
+
+
   function showToast(msg, type = "ok") {
     setToast({ msg, type });
   }
@@ -720,7 +837,6 @@ export default function App() {
     localStorage.clear();
     setAuth(null);
     setActiveSessions([]);
-    setHistory([]);
   }
 
   function handleStartSession(plate) {
@@ -735,7 +851,18 @@ export default function App() {
 
   function handleSessionEnded(id, data) {
     setActiveSessions(prev => prev.filter(s => s.session_id !== id));
-    setHistory(prev => [...prev, { ...data, session_id: id }]);
+
+    setHistory(prev => [
+      {
+        session_id: data.session_id,
+        slot_id: data.slot_id,
+        vehicle_id: data.vehicle_id,
+        start_time_unix: data.start_time_unix,
+        end_time_unix: data.end_time_unix,
+        amount: data.amount,
+      },
+      ...prev,
+    ]);
   }
 
   // load vehicles list to pass into modal
@@ -777,9 +904,11 @@ export default function App() {
   }
 
   const navItems = [
+    { id: "profile", label: "Кабинет", icon: Icons.user },
     { id: "vehicles", label: "Автомобили", icon: Icons.car },
     { id: "sessions", label: "Парковки", icon: Icons.clock, badge: activeSessions.length || null },
     { id: "history", label: "История", icon: Icons.parking },
+    { id: "admin", label: "Админ", icon: Icons.parking },
   ];
 
   return (
@@ -816,6 +945,14 @@ export default function App() {
       </aside>
 
       <main className="main-content">
+        {page === "profile" && (
+          <ProfilePage
+            auth={auth}
+            vehicles={vehicles}
+            activeSessions={activeSessions}
+            history={history}
+          />
+        )}
         {page === "vehicles" && (
           <VehiclesPage
             onStartSession={handleStartSession}
@@ -830,6 +967,9 @@ export default function App() {
           />
         )}
         {page === "history" && <HistoryPage history={history} />}
+        {page === "admin" && (
+          <AdminSlotsPage toast={showToast} />
+        )}
       </main>
 
       {showModal && (

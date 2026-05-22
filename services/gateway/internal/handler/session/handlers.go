@@ -110,9 +110,7 @@ func (h *Handlers) Price(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /sessions/active
-//
-// Returns the currently authenticated user's active (not-yet-ended) sessions.
-// Used by the UI to restore state after a page refresh.
+
 func (h *Handlers) Active(w http.ResponseWriter, r *http.Request) {
 	uid := middleware.UserIDFrom(r.Context())
 	resp, err := h.sessions.GetActiveSessions(r.Context(), &sessionv1.UserRequest{UserId: uid})
@@ -126,6 +124,28 @@ func (h *Handlers) Active(w http.ResponseWriter, r *http.Request) {
 		sessions = append(sessions, toSessionResponse(s))
 	}
 	writeJSON(w, http.StatusOK, activeSessionsResponse{Sessions: sessions})
+}
+
+func (h *Handlers) History(w http.ResponseWriter, r *http.Request) {
+	uid := middleware.UserIDFrom(r.Context())
+
+	resp, err := h.sessions.GetUserSessions(
+		r.Context(),
+		&sessionv1.UserRequest{UserId: uid},
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sessions := make([]sessionResponse, 0, len(resp.GetSessions()))
+	for _, s := range resp.GetSessions() {
+		sessions = append(sessions, toSessionResponse(s))
+	}
+
+	writeJSON(w, http.StatusOK, activeSessionsResponse{
+		Sessions: sessions,
+	})
 }
 
 // ---------- helpers ----------

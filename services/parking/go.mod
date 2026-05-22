@@ -4,7 +4,7 @@ go 1.25.4
 
 require (
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/nalrematvonesah/parking.proto v0.1.0
+	github.com/nalrematvonesah/parking.proto v0.2.0
 	github.com/redis/go-redis/v9 v9.19.0
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1

@@ -39,3 +39,40 @@ func (h *GRPC) GetAvailableSlots(ctx context.Context, _ *parkingpb.Empty) (*park
 	}
 	return &parkingpb.AvailableSlotsResponse{Count: c}, nil
 }
+
+func (h *GRPC) GetSlot(ctx context.Context, req *parkingpb.GetSlotRequest) (*parkingpb.SlotResponse, error) {
+	s, err := h.svc.GetSlot(ctx, req.GetSlotId())
+	if err != nil {
+		return nil, err
+	}
+
+	return &parkingpb.SlotResponse{
+		SlotId:     s.ID,
+		IsOccupied: s.IsOccupied,
+	}, nil
+}
+
+func (h *GRPC) ListAllSlots(ctx context.Context, _ *parkingpb.Empty) (*parkingpb.ListSlotsResponse, error) {
+	slots, err := h.svc.ListAllSlots(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*parkingpb.SlotResponse, 0, len(slots))
+	for _, s := range slots {
+		out = append(out, &parkingpb.SlotResponse{
+			SlotId:     s.ID,
+			IsOccupied: s.IsOccupied,
+		})
+	}
+
+	return &parkingpb.ListSlotsResponse{Slots: out}, nil
+}
+
+func (h *GRPC) AddSlots(ctx context.Context, req *parkingpb.AddSlotsRequest) (*parkingpb.Empty, error) {
+	if err := h.svc.AddSlots(ctx, req.GetCount()); err != nil {
+		return nil, err
+	}
+
+	return &parkingpb.Empty{}, nil
+}

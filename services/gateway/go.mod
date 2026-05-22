@@ -6,8 +6,8 @@ require (
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/joho/godotenv v1.5.1
-	github.com/nalrematvonesah/parking.proto v0.1.0
-	github.com/nalrematvonesah/session.proto v0.2.0
+	github.com/nalrematvonesah/parking.proto v0.2.0
+	github.com/nalrematvonesah/session.proto v0.2.1
 	github.com/nalrematvonesah/user.proto v0.1.0
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"parking-service/internal/cache"
 	"parking-service/internal/repository"
@@ -21,7 +22,6 @@ func (s *Service) AssignSlot(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	// invalidate cache
 	s.cache.InvalidateAvailable(ctx)
 	return id, nil
 }
@@ -43,4 +43,25 @@ func (s *Service) GetAvailable(ctx context.Context) (int32, error) {
 		s.cache.SetAvailable(ctx, v)
 	}
 	return v, err
+}
+
+func (s *Service) GetSlot(ctx context.Context, id int64) (*repository.Slot, error) {
+	return s.repo.GetSlot(ctx, id)
+}
+
+func (s *Service) ListAllSlots(ctx context.Context) ([]repository.Slot, error) {
+	return s.repo.ListAllSlots(ctx)
+}
+
+func (s *Service) AddSlots(ctx context.Context, count int32) error {
+	if count <= 0 {
+		return errors.New("count must be positive")
+	}
+
+	if err := s.repo.AddSlots(ctx, count); err != nil {
+		return err
+	}
+
+	s.cache.InvalidateAvailable(ctx)
+	return nil
 }

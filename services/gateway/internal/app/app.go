@@ -37,21 +37,15 @@ func New(cfg config.Config, log *zap.Logger) (*App, error) {
 		cfg.JWTTTL,
 	)
 
-	// handlers
 	uh := userhandler.New(c.User, jwtMgr)
 	ph := parkinghandler.New(c.Parking)
 	sh := sessionhandler.New(c.Session)
 
 	r := chi.NewRouter()
 
-	// middleware
 	r.Use(mw.CORS(cfg.AllowedOrigins))
 	r.Use(mw.Recovery(log))
 	r.Use(mw.AccessLog(log))
-
-	// =========================
-	// PUBLIC ROUTES
-	// =========================
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -61,35 +55,29 @@ func New(cfg config.Config, log *zap.Logger) (*App, error) {
 	r.Post("/auth/register", uh.Register)
 	r.Post("/auth/login", uh.Login)
 
-	// IMPORTANT:
-	// availability should be public
 	r.Get("/slots/available", ph.Available)
-
-	// =========================
-	// PROTECTED ROUTES
-	// =========================
 
 	r.Group(func(r chi.Router) {
 
 		r.Use(mw.JWTAuth(jwtMgr))
 
-		// auth
 		r.Post("/auth/logout", uh.Logout)
 
-		// vehicles
 		r.Post("/vehicles", uh.AddVehicle)
 		r.Delete("/vehicles", uh.DeleteVehicle)
 		r.Get("/vehicles", uh.ListVehicles)
 
-		// sessions
 		r.Post("/sessions/start", sh.Start)
 		r.Get("/sessions/active", sh.Active)
-
+		r.Get("/sessions/history", sh.History)
 
 		r.Post("/sessions/{id}/end", sh.End)
-
 		r.Get("/sessions/{id}", sh.Get)
 		r.Get("/sessions/{id}/price", sh.Price)
+
+		r.Get("/admin/slots", ph.ListAll)
+		r.Get("/admin/slots/{id}", ph.GetSlot)
+		r.Post("/admin/slots", ph.AddSlots)
 	})
 
 	server := &http.Server{

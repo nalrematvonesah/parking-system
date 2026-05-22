@@ -30,7 +30,6 @@ func (r *PostgresRepo) Ping(ctx context.Context) error {
 	return r.db.Ping(ctx)
 }
 
-// CreateSession inserts a new session and returns its id.
 func (r *PostgresRepo) CreateSession(
 	ctx context.Context,
 	userID, vehicleID, slotID int64,
@@ -45,7 +44,6 @@ func (r *PostgresRepo) CreateSession(
 	return id, err
 }
 
-// EndSession sets end_time on an active session and returns the resulting row.
 func (r *PostgresRepo) EndSession(
 	ctx context.Context,
 	sessionID int64,
@@ -98,13 +96,34 @@ func (r *PostgresRepo) CreatePayment(
 	return err
 }
 
-// ListActiveByUser returns all sessions of a user that haven't been ended yet.
-// Useful for restoring the UI state after the user refreshes the page.
 func (r *PostgresRepo) ListActiveByUser(ctx context.Context, userID int64) ([]Session, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, user_id, vehicle_id, slot_id, start_time, end_time
 		FROM sessions
 		WHERE user_id = $1 AND end_time IS NULL
+		ORDER BY start_time DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Session
+	for rows.Next() {
+		var s Session
+		if err := rows.Scan(&s.ID, &s.UserID, &s.VehicleID, &s.SlotID, &s.StartTime, &s.EndTime); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func (r *PostgresRepo) ListByUser(ctx context.Context, userID int64) ([]Session, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, user_id, vehicle_id, slot_id, start_time, end_time
+		FROM sessions
+		WHERE user_id = $1
 		ORDER BY start_time DESC
 	`, userID)
 	if err != nil {

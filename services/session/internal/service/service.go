@@ -19,6 +19,7 @@ type Repo interface {
 	GetSession(ctx context.Context, sessionID int64) (*repository.Session, error)
 	CreatePayment(ctx context.Context, sessionID int64, amount float64) error
 	ListActiveByUser(ctx context.Context, userID int64) ([]repository.Session, error)
+	ListByUser(ctx context.Context, userID int64) ([]repository.Session, error)
 }
 
 type ParkingPort interface {
@@ -181,10 +182,16 @@ func (s *Service) CalculatePrice(start, end time.Time) float64 {
 	return hours * s.pricePerHour
 }
 
-// ListActiveByUser returns all of the user's currently active sessions.
 func (s *Service) ListActiveByUser(ctx context.Context, userID int64) ([]repository.Session, error) {
 	if userID == 0 {
 		return nil, errors.New("user_id is required")
 	}
 	return s.repo.ListActiveByUser(ctx, userID)
+}
+
+func (s *Service) ListByUser(ctx context.Context, userID int64) ([]repository.Session, error) {
+	if userID == 0 {
+		return nil, errors.New("user_id is required")
+	}
+	return s.repo.ListByUser(ctx, userID)
 }
