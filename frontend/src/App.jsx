@@ -1,6 +1,5 @@
 import { useState, useEffect, createContext, useContext } from "react";
 
-// ─── API ────────────────────────────────────────────────────────────────────
 
 const BASE = "http://localhost:8080";
 
@@ -84,12 +83,9 @@ const api = {
     }),
 };
 
-// ─── AUTH CONTEXT ─────────────────────────────────────────────────────────
-
 const AuthCtx = createContext(null);
 function useAuth() { return useContext(AuthCtx); }
 
-// ─── ICONS ────────────────────────────────────────────────────────────────
 
 const Icon = ({ d, size = 20, stroke = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -109,8 +105,6 @@ const Icons = {
   bolt:    "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
 };
 
-// ─── UTILS ────────────────────────────────────────────────────────────────
-
 function fmtTime(unix) {
   if (!unix) return "—";
   return new Date(unix * 1000).toLocaleString("ru-RU", {
@@ -124,8 +118,6 @@ function fmtDuration(seconds) {
   const m = Math.floor((seconds % 3600) / 60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
-
-// ─── COMPONENTS ───────────────────────────────────────────────────────────
 
 function Spinner() {
   return (
@@ -153,8 +145,6 @@ function Toast({ msg, type, onClose }) {
 function Badge({ children, color = "blue" }) {
   return <span className={`badge badge-${color}`}>{children}</span>;
 }
-
-// ─── AUTH PAGE ─────────────────────────────────────────────────────────────
 
 function AuthPage({ onAuth }) {
   const [mode, setMode] = useState("login");
@@ -220,8 +210,6 @@ function AuthPage({ onAuth }) {
   );
 }
 
-// ─── SLOTS WIDGET ──────────────────────────────────────────────────────────
-
 function SlotsWidget() {
   const [count, setCount] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -267,8 +255,6 @@ function SlotsWidget() {
     </div>
   );
 }
-
-// ─── VEHICLES PAGE ─────────────────────────────────────────────────────────
 function VehiclesPage({ onStartSession, toast }) {
 
   const [vehicles, setVehicles] = useState([])
@@ -442,7 +428,6 @@ function VehiclesPage({ onStartSession, toast }) {
     </div>
   )
 }
-// ─── SESSION MODAL ──────────────────────────────────────────────────────────
 function StartSessionModal({
   vehicleId,
   vehicles,
@@ -573,7 +558,6 @@ function StartSessionModal({
     </div>
   )
 }
-// ─── SESSIONS PAGE ──────────────────────────────────────────────────────────
 
 function SessionsPage({ activeSessions, onEnd, toast }) {
   const [prices, setPrices] = useState({});
@@ -649,7 +633,6 @@ function SessionsPage({ activeSessions, onEnd, toast }) {
   );
 }
 
-// ─── HISTORY PAGE ───────────────────────────────────────────────────────────
 
 function HistoryPage({ history }) {
   if (history.length === 0) {
@@ -785,7 +768,6 @@ function AdminSlotsPage({ toast }) {
     </div>
   );
 }
-// ─── MAIN APP ──────────────────────────────────────────────────────────────
 
 export default function App() {
   const [auth, setAuth] = useState(() => {

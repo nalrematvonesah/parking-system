@@ -79,7 +79,6 @@ services:
     build: ./services/notification
     environment:
       NATS_URL: nats://nats:4222
-      # SMTP_USER, SMTP_PASS, SMTP_FROM intentionally empty → dev mode (logs emails)
     depends_on:
       nats:
         condition: service_started

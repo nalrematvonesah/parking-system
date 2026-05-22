@@ -11,14 +11,11 @@ import (
 	"go.uber.org/zap"
 )
 
-// Event subjects published by other services.
 const (
 	SubjectUserRegistered   = "user.registered"
 	SubjectParkingStarted   = "parking.started"
 	SubjectPaymentCompleted = "payment.completed"
 )
-
-// ---- payload types (must match producers) ----
 
 type UserRegisteredEvent struct {
 	UserID int64  `json:"user_id"`

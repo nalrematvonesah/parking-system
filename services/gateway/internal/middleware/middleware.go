@@ -17,9 +17,6 @@ const (
 	ctxUserID ctxKey = iota
 )
 
-// CORS sets permissive cross-origin headers and handles preflight OPTIONS requests.
-// allowedOrigins: list of allowed origins, e.g. ["http://localhost:3000"].
-// Pass ["*"] to allow all origins (dev only).
 func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 	allowed := make(map[string]bool, len(allowedOrigins))
 	wildcard := false
@@ -45,7 +42,6 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept")
 			w.Header().Set("Access-Control-Max-Age", "86400")
 
-			// preflight — respond immediately, no further processing needed
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -108,14 +104,11 @@ func JWTAuth(m *auth.Manager) func(http.Handler) http.Handler {
 	}
 }
 
-// UserIDFrom extracts the authenticated user_id from the context.
-// Returns 0 if no auth middleware was applied.
 func UserIDFrom(ctx context.Context) int64 {
 	v, _ := ctx.Value(ctxUserID).(int64)
 	return v
 }
 
-// Recovery turns panics into 500.
 func Recovery(log *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +126,6 @@ func Recovery(log *zap.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// AccessLog logs every request: method, path, status, latency.
 func AccessLog(log *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

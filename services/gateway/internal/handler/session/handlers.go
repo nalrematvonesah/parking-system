@@ -1,6 +1,3 @@
-// Package session contains HTTP handlers for the Session service.
-//
-// Owner: Aldiyar
 package session
 
 import (
@@ -147,8 +144,6 @@ func (h *Handlers) History(w http.ResponseWriter, r *http.Request) {
 		Sessions: sessions,
 	})
 }
-
-// ---------- helpers ----------
 
 func parseID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	raw := chi.URLParam(r, "id")

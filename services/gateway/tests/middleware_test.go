@@ -68,7 +68,7 @@ func TestJWTAuth_NoBearerPrefix(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set("Authorization", token) // no "Bearer " prefix
+	req.Header.Set("Authorization", token)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {

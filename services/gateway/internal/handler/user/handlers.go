@@ -1,6 +1,3 @@
-// Package user contains HTTP handlers for the User service.
-//
-// Owner: Askhat
 package user
 
 import (
@@ -22,8 +19,6 @@ func New(users userv1.UserServiceClient, auth *auth.Manager) *Handlers {
 	return &Handlers{users: users, auth: auth}
 }
 
-// ---------- DTOs ----------
-
 type credentialsRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -41,8 +36,6 @@ type vehicleRequest struct {
 type vehiclesResponse struct {
 	Vehicles []string `json:"vehicles"`
 }
-
-// ---------- handlers ----------
 
 // POST /auth/register
 func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {

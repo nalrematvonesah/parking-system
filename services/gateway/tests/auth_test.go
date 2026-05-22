@@ -28,7 +28,7 @@ func TestIssueAndVerify(t *testing.T) {
 }
 
 func TestVerify_ExpiredToken(t *testing.T) {
-	mgr := auth.New("test-secret", -time.Second) // already expired
+	mgr := auth.New("test-secret", -time.Second)
 	token, _ := mgr.Issue(1)
 
 	_, err := mgr.Verify(token)
